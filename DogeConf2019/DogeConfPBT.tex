@@ -792,14 +792,34 @@ let doesNotCrash () =
 \end{fslisting}
 \end{frame}
 
-\begin{frame}[fragile]
+\begin{frame}
 \frametitle{... and more useful with generalisation}
-... but it really shines with just a little more work.
-
-\begin{fslisting}
-    TODO 
-\end{fslisting}
+But it really shines with just a little more work.
 \end{frame}
+
+\begin{frame}
+\frametitle{The index only changes when you expect it to}
+\begin{enumerate}
+\item Make a generator for all interactions that shouldn't modify the index
+\item Generate a list of interactions
+\item Generate a list of interactions which don't modify the index
+\item Concatenate
+\item Execute, and assert that the index hasn't changed.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{The gold standard: an immutable model}
+
+\begin{enumerate}
+\item Define a map of ``index'' to ``current value''
+\item Interpret the interactions as acting on that map
+\item Generate a list of interactions
+\item Verify that the accessible output from the stream is indistinguishable from the output of the map.
+\end{enumerate}
+\end{frame}
+
+\tableofcontents
 
 \section*{Summary}
 \begin{frame}
