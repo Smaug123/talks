@@ -1,5 +1,4 @@
 \documentclass{beamer}
-\usetheme{Boadilla}
 \usepackage{listings}
 \usepackage{amsmath}
 \usepackage{caption}
@@ -11,6 +10,12 @@
 \definecolor{greencomments}{rgb}{0,0.5,0}
 \definecolor{turqusnumbers}{rgb}{0.17,0.57,0.69}
 \definecolor{redstrings}{rgb}{0.5,0,0}
+\definecolor{doge}{RGB}{240,218,149}
+\definecolor{lightdoge}{RGB}{245,228,169}
+\setbeamercolor{background canvas}{bg=doge}
+\setbeamercolor{frametitle}{bg=lightdoge,fg=black}
+\useinnertheme{rectangles}
+\useoutertheme{shadow}
 
 \lstdefinelanguage{FSharp}
     {morekeywords={let, new, match, with, rec, open, module, namespace, type, of, member, and, for, in, do, begin, end, fun, function, try, mutable, if, then, else},
@@ -115,12 +120,23 @@ let private rec add' (a : int) (ls : Interval list) =
         elif interval.Greatest + 1 = a then
             { interval with Greatest = interval.Greatest + 1 }
             :: is // augment this interval to contain a
-        else
-            add' a is // can't add it here; recurse
+        else // can't add it here; recurse
+            add' a is
 
 let add (a : int) (IntervalSet intervals) =
     add' a intervals
     |> IntervalSet
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: insertion}
+\begin{fslisting}
+[<RequireQualifiedAccess>]
+module IntervalSet =
+    let add (a : int) (IntervalSet intervals) =
+        add' a intervals
+        |> IntervalSet
 \end{fslisting}
 \end{frame}
 
@@ -138,7 +154,15 @@ module IntervalSet =
                 true
             else
                 contains' a is
+\end{fslisting}
+\end{frame}
 
+\begin{frame}[fragile]
+\frametitle{Implementation: containment}
+
+\begin{fslisting}
+[<RequireQualifiedAccess>]
+module IntervalSet =
     let contains (a : int) (IntervalSet intervals) : bool =
         contains' a intervals
 
@@ -374,14 +398,10 @@ let private rec add' (a : int) (ls : Interval list) =
     match ls with
     | [] -> [{ Least = a ; Greatest = a }]
     | interval :: is ->
-        if interval.Least <= a && a <= interval.Greatest then
+        if (* contains *) then
             ls
-        elif interval.Least - 1 = a then
-            { interval with Least = interval.Least - 1 }
-            :: is
-        elif interval.Greatest + 1 = a then
-            { interval with Greatest = interval.Greatest + 1 }
-            :: is
+        elif (* is 1 below *) then
+        elif (* is 1 above *) then
         else
             add' a is // <-- Oh no!
 \end{fslisting}
@@ -394,14 +414,10 @@ let private rec add' (a : int) (ls : Interval list) =
     match ls with
     | [] -> [{ Least = a ; Greatest = a }]
     | interval :: is ->
-        if interval.Least <= a && a <= interval.Greatest then
+        if (* contains *) then
             ls
-        elif interval.Least - 1 = a then
-            { interval with Least = interval.Least - 1 }
-            :: is
-        elif interval.Greatest + 1 = a then
-            { interval with Greatest = interval.Greatest + 1 }
-            :: is
+        elif (* is 1 below *) then
+        elif (* is 1 above *) then
         else
             interval :: add' a is
 \end{fslisting}
@@ -471,8 +487,7 @@ F\# is impure and side-effectful, so it's extremely easy to gather metrics.
 \frametitle{Gather metrics in the property}
 \begin{fslisting}
 let property
-    (positives : int ref)
-    (negatives : int ref)
+    (positives : int ref) (negatives : int ref)
     (ints : int list)
     (toCheck : int)
     : bool
@@ -590,17 +605,16 @@ The generator makes pairs of an integer and a list, where the integer is 50\% li
 \begin{fslisting}
 [<Test>]
 let test () =
-    let pos = ref 0
-    let neg = ref 0
+    let (pos, neg) = (ref 0), (ref 0)
 
     (fun (list, elt) -> property pos neg elt list)
     |> Prop.forAll (Arb.fromGen listAndElt)
     |> Check.QuickThrowOnFailure
 
-    let pos = pos.Value
-    let neg = neg.Value
+    let pos = pos.Value |> float
+    let neg = neg.Value |> float
 
-    (float pos.Value) / (float pos.Value + float neg.Value)
+    pos / (pos + neg)
     |> shouldBeGreaterThan 0.1
 \end{fslisting}
 \end{frame}
@@ -787,7 +801,7 @@ let doesNotCrash () =
 \end{fslisting}
 \end{frame}
 
-\section{Summary}
+\section*{Summary}
 \begin{frame}
 \frametitle{Why you should use PBT}
 Property-based testing...
