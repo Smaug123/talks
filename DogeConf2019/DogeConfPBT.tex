@@ -1,0 +1,803 @@
+\documentclass{beamer}
+\usetheme{Boadilla}
+\usepackage{listings}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+
+\usepackage{color}
+\definecolor{bluekeywords}{rgb}{0.13,0.13,1}
+\definecolor{greencomments}{rgb}{0,0.5,0}
+\definecolor{turqusnumbers}{rgb}{0.17,0.57,0.69}
+\definecolor{redstrings}{rgb}{0.5,0,0}
+
+\lstdefinelanguage{FSharp}
+    {morekeywords={let, new, match, with, rec, open, module, namespace, type, of, member, and, for, in, do, begin, end, fun, function, try, mutable, if, then, else},
+     keywordstyle=\color{bluekeywords},
+     sensitive=false,
+     morecomment=[l][\color{greencomments}]{///},
+     morecomment=[l][\color{greencomments}]{//},
+     morecomment=[s][\color{greencomments}]{{(*}{*)}},
+     morestring=[b]",
+     stringstyle=\color{redstrings}
+     }
+
+\title{Property-Based Testing}
+\author{Patrick Stevens}
+\institute{G-Research}
+\date{Doge Conf 2019}
+
+\lstnewenvironment{fslisting}
+  {
+    \lstset{
+        language=FSharp,
+        basicstyle=\small\ttfamily,
+        breaklines=true,
+        columns=fullflexible}
+  }
+  {
+  }
+
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+\section{What's the problem?}
+\subsection{A program to test}
+
+\begin{frame}
+\tableofcontents
+\end{frame}
+
+\begin{frame}
+\frametitle{Let's have something to test}
+Interval set: a space-efficient set of integers
+
+Defining example:
+$$\{{\color{red}1,2,3,4},{\color{cyan}8,9,10}\}$$ $$[{\color{red}(1, 4)}, {\color{cyan}(8, 10)}]$$
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Public API}
+\begin{fslisting}
+type IntervalSet
+
+[<RequireQualifiedAccess>]
+module IntervalSet =
+    val empty : IntervalSet
+    val add : int -> IntervalSet -> IntervalSet
+    val contains : int -> IntervalSet -> bool
+\end{fslisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Data structure}
+
+\begin{fslisting}
+type private Interval =
+    {
+        Least : int
+        Greatest : int
+    }
+
+type IntervalSet = private IntervalSet of Interval list
+
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: empty}
+
+\begin{fslisting}
+[<RequireQualifiedAccess>]
+module IntervalSet =
+    let empty = IntervalSet []
+
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: insertion}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> [{ Least = a ; Greatest = a }]
+    | interval :: is ->
+        if interval.Least <= a && a <= interval.Greatest then
+            ls // no need to add, it's already there
+        elif interval.Least - 1 = a then
+            { interval with Least = interval.Least - 1 }
+            :: is // augment this interval to contain a
+        elif interval.Greatest + 1 = a then
+            { interval with Greatest = interval.Greatest + 1 }
+            :: is // augment this interval to contain a
+        else
+            add' a is // can't add it here; recurse
+
+let add (a : int) (IntervalSet intervals) =
+    add' a intervals
+    |> IntervalSet
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: containment}
+
+\begin{fslisting}
+[<RequireQualifiedAccess>]
+module IntervalSet =
+    let private rec contains' (a : int) (ls : Interval list) =
+        match ls with
+        | [] -> false
+        | interval :: is ->
+            if interval.Least <= a && a <= interval.Greatest then
+                true
+            else
+                contains' a is
+
+    let contains (a : int) (IntervalSet intervals) : bool =
+        contains' a intervals
+
+\end{fslisting}
+\end{frame}
+
+\subsection{Testing the program}
+
+\begin{frame}[fragile]
+\frametitle{Start testing!}
+Helper function for tests:
+\begin{fslisting}
+let create (is : int list) : IntervalSet =
+    is
+    |> List.fold
+        (fun set i -> IntervalSet.add i set)
+        IntervalSet.empty
+\end{fslisting}
+\end{frame}
+\begin{frame}
+\frametitle{What can we test?}
+We should test some different lists and their resulting IntervalSets.
+
+\begin{itemize}
+    \item $[3; 4]$ contains $5$? (No.)
+    \item $[3; 5]$ contains $5$? (Yes.)
+    \item $[3; 4; 5]$ contains $4$? (Yes.)
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{The test cases}
+\begin{fslisting}
+    create [3; 4]
+    |> IntervalSet.contains 5
+    |> shouldEqual false
+
+    create [3; 5]
+    |> IntervalSet.contains 5
+    |> shouldEqual true
+
+    create [3; 4; 5]
+    |> IntervalSet.contains 4
+    |> shouldEqual true
+\end{fslisting}
+Hooray, the tests pass!
+\end{frame}
+
+\subsection{But can I really trust myself?}
+
+\begin{frame}
+\frametitle{... but is it right?}
+\end{frame}
+
+\begin{frame}
+\frametitle{... but is it right?}
+
+I don't know!
+
+\begin{itemize}
+\item I'm lazy
+\item I'm stupid
+\item I hate testing
+\end{itemize}
+
+Isn't there a better way?
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{FsCheck can help!}
+
+Sneak peek: FsCheck will tell us that this implementation is wrong.
+
+\begin{Verbatim}[commandchars=\\\{\}]
+\textcolor{red}{Falsifiable}, after 35 tests (15 shrinks)
+  (StGen 9514417537,296661223)):
+Original:
+[0; 0; 0; 0; 0; 0; 0; 12; 1; -2; 0; 0; 0; 0; 0; 0; 0]
+12
+Shrunk:
+[12; 0]
+12
+\end{Verbatim}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{FsCheck's test}
+The last two lines FsCheck gave us were:
+\begin{verbatim}
+[12; 0]
+12
+\end{verbatim}
+
+FsCheck found this test:
+
+\begin{fslisting}
+create [12; 0]
+|> IntervalSet.contains 12
+|> shouldEqual true
+\end{fslisting}
+\end{frame}
+
+\section{Introduction to FsCheck}
+\subsection{FsCheck's view of the world}
+
+\begin{frame}
+\tableofcontents
+\end{frame}
+
+\begin{frame}
+\frametitle{Why do you test?}
+
+\begin{itemize}
+    \item Your program does what you want it to.
+    \item Your program doesn't do what you don't want it to.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{How do you normally test?}
+
+\begin{enumerate}
+    \item Come up with examples.
+    \item Work out what your program should do on those examples.
+    \item Run the program and check it did what you wanted.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{But what are you \emph{really} doing?}
+
+You're testing \emph{properties} through \emph{representative examples}.
+\end{frame}
+
+\begin{frame}
+    Why not just \emph{test properties}?
+\end{frame}
+
+\begin{frame}
+\frametitle{FsCheck tests properties automatically}
+
+\begin{itemize}
+    \item Find edge cases
+    \item Find large, complicated cases
+    \item Shrink large cases automatically
+    \item Make sure you can repeat any failures (the TDD way!)
+\end{itemize}
+\end{frame}
+
+\subsection{Back to the example}
+
+\begin{frame}
+\frametitle{The failing property for IntervalSet}
+\begin{itemize}
+\item Create an IntervalSet from a list of integers\dots
+\item then check for containment\dots
+\item should be the same as checking the original list.
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{The failing property for IntervalSet, in code}
+\begin{fslisting}
+let property (ints : int list) (toCheck : int) : bool =
+    create ints
+    |> IntervalSet.contains toChece
+    |> (=) (List.contains doesContain ints)
+\end{fslisting}
+
+% Remember, FsCheck told us that this property failed.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Invoke FsCheck}
+\begin{fslisting}
+open FsCheck
+
+let property (ints : int list) (toCheck : int) : bool =
+    create ints
+    |> IntervalSet.contains toCheck
+    |> (=) (List.contains doesContain ints)
+
+[<Test>]
+let testProperty () =
+    Check.QuickThrowOnFailure property
+\end{fslisting}
+
+% Remember, FsCheck told us that this failed.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{FsCheck's output, revisited}
+\begin{Verbatim}[commandchars=\\\{\}]
+Falsifiable, after \textcolor{red}{35} tests (15 shrinks)
+  (StGen 9514417537,296661223)):
+Original:
+[0; 0; 0; 0; 0; 0; 0; 12; 1; -2; 0; 0; 0; 0; 0; 0; 0]
+12
+Shrunk:
+\textcolor{cyan}{[12; 0]}
+\textcolor{cyan}{12}
+\end{Verbatim}
+
+\hfill \break
+
+FsCheck constructed \textcolor{red}{35} tests before finding a failure.
+It then shrank the test case to \textcolor{cyan}{the smallest failure} it could find.
+\end{frame}
+
+\subsection{Advantages}
+
+\begin{frame}
+\frametitle{Advantages}
+
+\begin{itemize}
+\item No thought required!
+\item Perfectly reproducible
+\item Edge cases automatically examined closely
+\item Randomised testing increases coverage
+\end{itemize}
+
+\hfill \break
+
+(Make sure you explicitly test any failures FsCheck finds, so that nothing is lost to the mists of time!)
+\end{frame}
+
+\subsection{What was the bug?}
+\begin{frame}[fragile]
+\frametitle{The bug}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> [{ Least = a ; Greatest = a }]
+    | interval :: is ->
+        if interval.Least <= a && a <= interval.Greatest then
+            ls
+        elif interval.Least - 1 = a then
+            { interval with Least = interval.Least - 1 }
+            :: is
+        elif interval.Greatest + 1 = a then
+            { interval with Greatest = interval.Greatest + 1 }
+            :: is
+        else
+            add' a is // <-- Oh no!
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{The fix}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> [{ Least = a ; Greatest = a }]
+    | interval :: is ->
+        if interval.Least <= a && a <= interval.Greatest then
+            ls
+        elif interval.Least - 1 = a then
+            { interval with Least = interval.Least - 1 }
+            :: is
+        elif interval.Greatest + 1 = a then
+            { interval with Greatest = interval.Greatest + 1 }
+            :: is
+        else
+            interval :: add' a is
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{FsCheck is happy}
+\begin{verbatim}
+Ok, passed 100 tests.
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Another classic: serialisers}
+
+\begin{verbatim}
+[<RequireQualifiedAccess>]
+module FancyThing =
+    val toString : FancyThing -> string
+    val parse : string -> FancyThing option
+\end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Test the serialiser}
+
+\begin{fslisting}
+[<Test>]
+let roundTripTest () =
+    let property (t : FancyThing) : bool =
+        t
+        |> FancyThing.toString
+        |> FancyThing.parse
+        |> (=) (Some t)
+    Check.QuickThrowOnFailure property
+\end{fslisting}
+\end{frame}
+
+\section{Metatesting}
+\tableofcontents
+
+\subsection{Was the testing comprehensive?}
+
+\begin{frame}[fragile]
+\frametitle{How can we be sure we tested enough?}
+
+Recall the property:
+\begin{fslisting}
+let property (ints : int list) (toCheck : int) : bool =
+    create ints
+    |> IntervalSet.contains toCheck
+    |> (=) (List.contains doesContain ints)
+
+\end{fslisting}
+
+By fluke (or my incompetence), FsCheck might never generate a ``yes, does contain'' case.
+\end{frame}
+
+\begin{frame}
+\frametitle{Gather metrics}
+F\# is impure and side-effectful, so it's extremely easy to gather metrics.
+
+(In Haskell, this is harder and requires more library functions.)
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Gather metrics in the property}
+\begin{fslisting}
+let property
+    (positives : int ref)
+    (negatives : int ref)
+    (ints : int list)
+    (toCheck : int)
+    : bool
+    =
+    let contains = List.contains doesContain ints
+    if contains then
+        incr positives
+    else
+        incr negatives
+
+    create ints
+    |> IntervalSet.contains toCheck
+    |> (=) contains
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Invoke the augmented test}
+\begin{fslisting}
+[<Test>]
+let test () =
+    let pos = ref 0
+    let neg = ref 0
+    Check.QuickThrowOnFailure (property pos neg)
+
+    let pos = pos.Value
+    let neg = neg.Value
+
+    pos |> shouldBeGreaterThan 0
+    neg |> shouldBeGreaterThan 0
+
+    (float pos) / (float pos + float neg)
+    |> shouldBeGreaterThan 0.1
+\end{fslisting}
+\end{frame}
+
+\begin{frame}
+At least a tenth of the time, we want to be hitting positive cases, but \dots
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{The test is a bit unreliable!}
+\begin{verbatim}
+Expected: 0.1
+Actual: 0.08
+
+at FsUnitTyped.TopLevelOperators.shouldBeGreaterThan
+\end{verbatim}
+\end{frame}
+
+\subsection{Manipulating the cases}
+\begin{frame}
+\frametitle{Manipulating the generated cases}
+We want to generate cases that aren't so often ``look for something that's not in the list''.
+
+FsCheck gives us access to its \emph{generators} for this purpose.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Generators}
+We will have the property remain the same, but tell FsCheck to generate different cases.
+
+FsCheck has a number of built-in generators.
+It also has a computation expression to manipulate generators.
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Generator of bounded integers}
+
+\begin{fslisting}
+let someInts : Gen<int> = Gen.choose (-100, 100)
+Gen.sample 0 5 someInts
+// output: [57; -24; 67; -14; 77]
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Generator of bounded even integers}
+\begin{fslisting}
+let someInts : Gen<int> = Gen.choose (-100, 100)
+let evenIntegers : Gen<int> = gen {
+    let! (anyInt : int) = someInt
+    return 2 * anyInt
+}
+Gen.sample 0 5 someInts
+// output: [-190; -24; -194; -108; -112]
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Generator that sometimes selects from a list}
+\begin{fslisting}
+let integers : Gen<int list> =
+    Gen.sized (fun i ->
+        Gen.choose (-100, 100)
+        |> Gen.listOfLength i)
+
+let listAndElt : Gen<int * int list> = gen {
+    let! (list : int list) = integers
+    let genFromList = Gen.elements list
+    let genNotFromList =
+        Gen.choose (-100, 100)
+        |> Gen.filter (fun i -> not <| List.contains i list)
+    let! number = Gen.oneOf [genFromList ; genNotFromList]
+    return (number, list)
+}
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Using this generator}
+
+The generator makes pairs of an integer and a list, where the integer is 50\% likely to appear in the list.
+
+\begin{fslisting}
+[<Test>]
+let test () =
+    let pos = ref 0
+    let neg = ref 0
+
+    (fun (list, elt) -> property pos neg elt list)
+    |> Prop.forAll (Arb.fromGen listAndElt)
+    |> Check.QuickThrowOnFailure
+
+    let pos = pos.Value
+    let neg = neg.Value
+
+    (float pos.Value) / (float pos.Value + float neg.Value)
+    |> shouldBeGreaterThan 0.1
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{verbatim}
+Ok, passed 100 tests.
+\end{verbatim}
+
+In fact we now have a positive case about 50\% of the time.
+\end{frame}
+
+\begin{frame}
+\tableofcontents
+\end{frame}
+
+\section{Stateful systems}
+\begin{frame}
+\frametitle{Stateful systems}
+What about state?
+
+Key idea: \emph{describe what to do}, and then do it.
+\end{frame}
+
+\subsection{Example}
+\begin{frame}[fragile]
+\frametitle{Example: a stream}
+Simple model: array and pointer.
+
+\begin{table}
+\captionsetup{labelformat=empty}
+\caption{Starting state, pointer at index $0$}
+\begin{tabular}{ |c|c|c|c|c|c|c|c }
+    \hline
+    \color{red}72 & 69 & 76 & 76 & 79 & 32 & 87 & \dots \\
+    \hline
+\end{tabular}
+\end{table}
+
+\begin{table}
+\captionsetup{labelformat=empty}
+\caption{Seek to index $2$}
+\begin{tabular}{ |c|c|c|c|c|c|c|c }
+    \hline
+    72 & 69 & \color{red}76 & 76 & 79 & 32 & 87 & \dots \\
+    \hline
+\end{tabular}
+\end{table}
+
+\begin{table}
+\captionsetup{labelformat=empty}
+\caption{Write $88$ at the current index}
+\begin{tabular}{ |c|c|c|c|c|c|c|c }
+    \hline
+    72 & 69 & \color{red}88 & 76 & 79 & 32 & 87 & \dots \\
+    \hline
+\end{tabular}
+\end{table}
+
+\end{frame}
+
+\begin{frame}[fragile]
+Imagine we can't access the implementation, but we want to test it anyway.
+
+\begin{fslisting}
+type Stream
+
+[<RequireQualifiedAccess>]
+module Stream =
+    val uninitialised : unit -> Stream
+
+    val read : Stream -> byte
+    val write : Stream -> byte -> unit
+    val seek : Stream -> int -> unit
+    val currentIndex : Stream -> int
+\end{fslisting}
+\end{frame}
+
+\begin{frame}
+\frametitle{Some things to test}
+\begin{itemize}
+    \item Write then read
+    \item Seek then get index
+    \item Write, seek away, seek back, read
+\end{itemize}
+
+\hfill \break
+FsCheck will do these, and do them well, but they are all quite specific.
+
+Isn't the point of FsCheck to take this drudgery away from us?
+\end{frame}
+
+\begin{frame}
+\frametitle{Obstacles to FsCheck}
+
+Why is FsCheck not helping here?
+
+\begin{itemize}
+    \item Testing a mutable object
+    \item No obvious immutable model to use
+    \item How to generate random streams?
+    \item Need shrinking not to interfere with itself
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+Answer: \emph{describe} what to do, and \emph{then} do it!
+
+\hfill \break
+
+\tiny{c.f. initial algebras}
+
+\end{frame}
+
+\subsection{Testing with FsCheck}
+
+\begin{frame}[fragile]
+\frametitle{Domain model}
+\begin{fslisting}
+type StreamInteraction =
+| Write of byte
+| Read
+| Seek of int
+| CurrentIndex
+
+type TestCase = StreamInteraction list
+\end{fslisting}
+
+\end{frame}
+\begin{frame}[fragile]
+\begin{fslisting}
+[<RequireQualifiedAccess>]
+module TestCase =
+    let rec prepareStream
+        (s : Stream)
+        (instructions : TestCase)
+        =
+        for instruction in instructions do
+            match instructions with
+            | Write b, instructions ->
+                Stream.write s b
+            | Read, instructions ->
+                Stream.read s |> ignore
+            | Seek n, instructions ->
+                Stream.seek s n
+            | CurrentIndex, instructions ->
+                Stream.currentIndex s |> ignore
+
+\end{fslisting}
+\end{frame}
+
+\begin{frame}
+\frametitle{Suddenly an immutable model appeared!}
+
+\begin{itemize}
+\item By constructing test cases through their \emph{descriptions}\dots
+\item we made an immutable model of the world.
+\item FsCheck can generate these things completely automatically!
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Immediately useful...}
+This can be used with no further modification to check a very useful property:
+
+\begin{fslisting}
+[<Test>]
+let doesNotCrash () =
+    let property (instructions : StreamInteraction list) : bool =
+        let s = Stream.uninitialised ()
+        TestCase.prepareStream s instructions
+        true
+
+    Check.QuickThrowOnFailure (property)
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{... and more useful with generalisation}
+... but it really shines with just a little more work.
+
+\begin{fslisting}
+    TODO 
+\end{fslisting}
+\end{frame}
+
+\section{Summary}
+\begin{frame}
+\frametitle{Why you should use PBT}
+Property-based testing...
+\begin{itemize}
+\item is easy
+\item exists in many languages (Python, F\#, Haskell, \dots)
+\item can be added incrementally
+\item is as comprehensive as you want
+\item tests anything (black-box or otherwise)
+\end{itemize}
+\end{frame}
+
+\end{document}
