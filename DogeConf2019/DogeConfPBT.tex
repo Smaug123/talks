@@ -4,6 +4,7 @@
 \usepackage{caption}
 \usepackage{fancyvrb}
 \usepackage{xcolor}
+\usepackage{eso-pic}
 
 \usepackage{color}
 \definecolor{bluekeywords}{rgb}{0.13,0.13,1}
@@ -12,13 +13,24 @@
 \definecolor{redstrings}{rgb}{0.5,0,0}
 \definecolor{doge}{RGB}{240,218,149}
 \definecolor{lightdoge}{RGB}{245,228,169}
+\definecolor{grey}{RGB}{186,171,169}
+
 \setbeamercolor{background canvas}{bg=doge}
 \setbeamercolor{frametitle}{bg=lightdoge,fg=black}
+\setbeamercolor{section number projected}{bg=doge,fg=black}
+\setbeamercolor{section in toc shaded}{bg=doge, fg=grey}
+\setbeamercolor{subsection in toc shaded}{bg=doge, fg=grey}
 \useinnertheme{rectangles}
 \useoutertheme{shadow}
 
+\newcommand\AtPagemyUpperLeft[1]{\AtPageLowerLeft{%
+\put(\LenToUnit{0.9\paperwidth},\LenToUnit{0.88\paperheight}){#1}}}
+\AddToShipoutPictureFG{
+  \AtPagemyUpperLeft{{\includegraphics[width=1cm,keepaspectratio]{BabyDoge.png}}}
+}%
+
 \lstdefinelanguage{FSharp}
-    {morekeywords={let, new, match, with, rec, open, module, namespace, type, of, member, and, for, in, do, begin, end, fun, function, try, mutable, if, then, else},
+    {morekeywords={val, let, new, match, with, rec, open, module, namespace, type, of, member, and, for, in, do, begin, end, fun, function, try, mutable, if, then, else},
      keywordstyle=\color{bluekeywords},
      sensitive=false,
      morecomment=[l][\color{greencomments}]{///},
@@ -58,6 +70,10 @@
 \end{frame}
 
 \begin{frame}
+\tableofcontents[currentsection]
+\end{frame}
+
+\begin{frame}
 \frametitle{Let's have something to test}
 Interval set: a space-efficient set of integers
 
@@ -79,14 +95,21 @@ module IntervalSet =
 
 \end{frame}
 
+\begin{frame}
+\frametitle{Implementation}
+This is a presentation about testing.
+
+Yes, there will be a bug somewhere.
+\end{frame}
+
 \begin{frame}[fragile]
 \frametitle{Data structure}
 
 \begin{fslisting}
 type private Interval =
     {
-        Least : int
-        Greatest : int
+        Min : int
+        Max : int
     }
 
 type IntervalSet = private IntervalSet of Interval list
@@ -110,22 +133,53 @@ module IntervalSet =
 \begin{fslisting}
 let private rec add' (a : int) (ls : Interval list) =
     match ls with
-    | [] -> [{ Least = a ; Greatest = a }]
+    | [] -> [{ Min = a ; Max = a }]
+    | _ -> ...
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: insertion}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> ...
     | interval :: is ->
-        if interval.Least <= a && a <= interval.Greatest then
+        if interval.Min <= a && a <= interval.Max then
             ls // no need to add, it's already there
-        elif interval.Least - 1 = a then
-            { interval with Least = interval.Least - 1 }
+        else ...
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: insertion}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> ...
+    | interval :: is ->
+        if // already there...
+        elif interval.Min - 1 = a then
+            { interval with Min = interval.Min - 1 }
             :: is // augment this interval to contain a
-        elif interval.Greatest + 1 = a then
-            { interval with Greatest = interval.Greatest + 1 }
+        elif interval.Max + 1 = a then
+            { interval with Max = interval.Max + 1 }
             :: is // augment this interval to contain a
+        ...
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Implementation: insertion}
+\begin{fslisting}
+let private rec add' (a : int) (ls : Interval list) =
+    match ls with
+    | [] -> ...
+    | interval :: is ->
+        if // already there...
+        elif // can be added to this interval...
         else // can't add it here; recurse
             add' a is
-
-let add (a : int) (IntervalSet intervals) =
-    add' a intervals
-    |> IntervalSet
 \end{fslisting}
 \end{frame}
 
@@ -144,28 +198,11 @@ module IntervalSet =
 \frametitle{Implementation: containment}
 
 \begin{fslisting}
-[<RequireQualifiedAccess>]
-module IntervalSet =
-    let private rec contains' (a : int) (ls : Interval list) =
-        match ls with
-        | [] -> false
-        | interval :: is ->
-            if interval.Least <= a && a <= interval.Greatest then
-                true
-            else
-                contains' a is
-\end{fslisting}
-\end{frame}
-
-\begin{frame}[fragile]
-\frametitle{Implementation: containment}
-
-\begin{fslisting}
-[<RequireQualifiedAccess>]
-module IntervalSet =
-    let contains (a : int) (IntervalSet intervals) : bool =
-        contains' a intervals
-
+let rec contains (a : int) (IntervalSet ls) =
+    ls
+    |> List.tryFind (fun interval ->
+        interval.Min <= a && a <= interval.Max)
+    |> Option.isSome
 \end{fslisting}
 \end{frame}
 
@@ -208,6 +245,7 @@ We should test some different lists and their resulting IntervalSets.
     |> IntervalSet.contains 4
     |> shouldEqual true
 \end{fslisting}
+\pause
 Hooray, the tests pass!
 \end{frame}
 
@@ -257,6 +295,8 @@ The last two lines FsCheck gave us were:
 12
 \end{verbatim}
 
+\pause
+
 FsCheck found this test:
 
 \begin{fslisting}
@@ -270,7 +310,7 @@ create [12; 0]
 \subsection{FsCheck's view of the world}
 
 \begin{frame}
-\tableofcontents
+\tableofcontents[currentsection]
 \end{frame}
 
 \begin{frame}
@@ -396,7 +436,7 @@ It then shrank the test case to \textcolor{cyan}{the smallest failure} it could 
 \begin{fslisting}
 let private rec add' (a : int) (ls : Interval list) =
     match ls with
-    | [] -> [{ Least = a ; Greatest = a }]
+    | [] -> [{ Min = a ; Max = a }]
     | interval :: is ->
         if (* contains *) then
             ls
@@ -412,7 +452,7 @@ let private rec add' (a : int) (ls : Interval list) =
 \begin{fslisting}
 let private rec add' (a : int) (ls : Interval list) =
     match ls with
-    | [] -> [{ Least = a ; Greatest = a }]
+    | [] -> [{ Min = a ; Max = a }]
     | interval :: is ->
         if (* contains *) then
             ls
@@ -430,15 +470,28 @@ Ok, passed 100 tests.
 \end{verbatim}
 \end{frame}
 
-\begin{frame}[fragile]
-\frametitle{Another classic: serialisers}
+\begin{frame}
+\frametitle{Serialisers: the hello-world of black-box testing}
 
-\begin{verbatim}
+A serialiser is defined by a property:
+
+\hfill \break
+
+\noindent\fbox{%
+Writing an object, then reading it in, gives the original object.
+}
+
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Signature of a serialiser}
+
+\begin{fslisting}
 [<RequireQualifiedAccess>]
 module FancyThing =
     val toString : FancyThing -> string
     val parse : string -> FancyThing option
-\end{verbatim}
+\end{fslisting}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -456,8 +509,18 @@ let roundTripTest () =
 \end{fslisting}
 \end{frame}
 
+\begin{frame}
+\frametitle{What FsCheck gave us}
+Without needing to know anything about the implementation, FsCheck was still able to produce useful tests!
+\end{frame}
+
 \section{Metatesting}
-\tableofcontents
+\tableofcontents[currentsection]
+
+\begin{frame}
+\frametitle{Metatesting}
+A technique you should use to make your testing more effective.
+\end{frame}
 
 \subsection{Was the testing comprehensive?}
 
@@ -473,6 +536,7 @@ let property (ints : int list) (toCheck : int) : bool =
 
 \end{fslisting}
 
+\pause
 By fluke (or my incompetence), FsCheck might never generate a ``yes, does contain'' case.
 \end{frame}
 
@@ -480,7 +544,9 @@ By fluke (or my incompetence), FsCheck might never generate a ``yes, does contai
 \frametitle{Gather metrics}
 F\# is impure and side-effectful, so it's extremely easy to gather metrics.
 
-(In Haskell, this is harder and requires more library functions.)
+\hfill \break
+
+(Instrumentation is an example where purity really does make things harder!)
 \end{frame}
 
 \begin{frame}[fragile]
@@ -578,19 +644,35 @@ Gen.sample 0 5 someInts
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Generator that sometimes selects from a list}
+\frametitle{Size}
 \begin{fslisting}
 let integers : Gen<int list> =
     Gen.sized (fun i ->
         Gen.choose (-100, 100)
         |> Gen.listOfLength i)
+\end{fslisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Generator that sometimes selects from a list}
+\begin{fslisting}
+let integers : Gen<int list> = ...
 
 let listAndElt : Gen<int * int list> = gen {
     let! (list : int list) = integers
+\end{fslisting}
+\pause
+\begin{fslisting}
     let genFromList = Gen.elements list
+\end{fslisting}
+\pause
+\begin{fslisting}
     let genNotFromList =
         Gen.choose (-100, 100)
-        |> Gen.filter (fun i -> not <| List.contains i list)
+        |> Gen.filter (fun i -> not (List.contains i list))
+\end{fslisting}
+\pause
+\begin{fslisting}
     let! number = Gen.oneOf [genFromList ; genNotFromList]
     return (number, list)
 }
@@ -627,11 +709,12 @@ Ok, passed 100 tests.
 In fact we now have a positive case about 50\% of the time.
 \end{frame}
 
+\section{Stateful systems}
+
 \begin{frame}
-\tableofcontents
+\tableofcontents[currentsection]
 \end{frame}
 
-\section{Stateful systems}
 \begin{frame}
 \frametitle{Stateful systems}
 What about state?
@@ -723,6 +806,7 @@ Why is FsCheck not helping here?
 \begin{frame}
 Answer: \emph{describe} what to do, and \emph{then} do it!
 
+\pause
 \hfill \break
 
 \tiny{c.f. initial algebras}
@@ -819,7 +903,73 @@ But it really shines with just a little more work.
 \end{enumerate}
 \end{frame}
 
-\tableofcontents
+\begin{frame}
+\frametitle{Aside: model-based testing}
+
+This has a name: \emph{model-based testing}.
+
+\hfill \break
+
+\noindent\fbox{%
+Checking behaviour relative to a more easily specified model.
+}
+
+\hfill \break
+
+MBT is a subset of property-based testing.
+
+The property is ``the system behaves like the model does''.
+
+(Contrast: serialiser. Correctness defined by property, not model.)
+
+\hfill \break
+
+FsCheck also has dedicated built-in support for MBT.
+\end{frame}
+
+\begin{frame}
+\frametitle{Sketch: Testing a UI}
+Test a UI by\dots
+\begin{enumerate}
+    \item Identifying the actions you want to test;
+    \item Generating lists of actions;
+    \item Applying the actions;
+    \item Checking the final state is as expected given the actions.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{Small properties, incremental addition}
+
+The UI example is good:
+\begin{itemize}
+\item Enormous space of possible actions
+\item Some actions very hard to test?
+\item Don't care uniformly about correctness
+\end{itemize}
+
+\hfill \break
+
+Don't need to test everything!
+\end{frame}
+
+\begin{frame}
+\frametitle{A restricted search space}
+
+If you're struggling to find properties, restrict the search space!
+
+If you're struggling to define correctness, restrict the search space!
+
+\hfill \break
+
+Cut down to a small subset of user interactions, and you will find properties.
+\end{frame}
+
+\begin{frame}
+\frametitle{Doge Analytics}
+
+(Here is where I waffle, because these slides are on public Github)
+\end{frame}
 
 \section*{Summary}
 \begin{frame}
