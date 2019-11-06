@@ -369,7 +369,7 @@ You're testing \emph{properties} through \emph{representative examples}.
 \begin{fslisting}
 let property (ints : int list) (toCheck : int) : bool =
     create ints
-    |> IntervalSet.contains toChece
+    |> IntervalSet.contains toCheck
     |> (=) (List.contains doesContain ints)
 \end{fslisting}
 
@@ -470,6 +470,7 @@ Ok, passed 100 tests.
 \end{verbatim}
 \end{frame}
 
+\subsection{Serialisers}
 \begin{frame}
 \frametitle{Serialisers: the hello-world of black-box testing}
 
@@ -838,13 +839,13 @@ module TestCase =
         =
         for instruction in instructions do
             match instructions with
-            | Write b, instructions ->
+            | Write b ->
                 Stream.write s b
-            | Read, instructions ->
+            | Read ->
                 Stream.read s |> ignore
-            | Seek n, instructions ->
+            | Seek n ->
                 Stream.seek s n
-            | CurrentIndex, instructions ->
+            | CurrentIndex ->
                 Stream.currentIndex s |> ignore
 
 \end{fslisting}
@@ -867,7 +868,7 @@ This can be used with no further modification to check a very useful property:
 \begin{fslisting}
 [<Test>]
 let doesNotCrash () =
-    let property (instructions : StreamInteraction list) : bool =
+    let property (instructions : StreamInteraction list) =
         let s = Stream.uninitialised ()
         TestCase.prepareStream s instructions
         true
