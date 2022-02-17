@@ -13,7 +13,37 @@
         packages = flake-utils.lib.flattenTree {
           gitAndTools = pkgs.gitAndTools;
         };
-        defaultPackage = pkgs.stdenv.mkDerivation {
+        defaultPackage =
+          let createShellScript = name: contents: pkgs.stdenv.mkDerivation {
+            pname = name;
+            version = "0.1.0";
+            src = contents;
+
+            buildInputs = [
+              pkgs.shellcheck
+            ];
+
+            phases = [ "configurePhase" "buildPhase" "installPhase" ];
+
+            configurePhase = ''
+              ${pkgs.shellcheck}/bin/shellcheck "${contents}"
+            '';
+
+            buildPhase = ''
+              cp "${contents}" run.sh
+              patchShebangs run.sh
+              sed -i 's_"/bin/sh"_"${pkgs.bash}/bin/sh"_' run.sh
+            '';
+
+            installPhase = ''
+              mkdir -p $out
+              mv run.sh $out/run.sh
+            '';
+          }; in
+          let buildLatex = 
+            createShellScript "latex" ./build.sh;
+              in
+ pkgs.stdenv.mkDerivation {
             pname = "patrick-talks";
             version = "0.1.0";
             src = ./.;
@@ -22,12 +52,12 @@
             ];
 
             buildPhase = ''
-              find . -type f -name '*.tex' | xargs pdflatex
+            ${pkgs.bash}/bin/sh ${buildLatex}/run.sh .
             '';
 
             installPhase = ''
               mkdir -p $out
-              mv . $out
+              mv ./* $out
             '';
         };
       }
