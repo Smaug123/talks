@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ master ]
 jobs:
-  flakes-simple:
+  flake-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -14,4 +14,4 @@ jobs:
           nix_version: 2.4
           nix_conf: experimental-features = nix-command flakes
       - name: nix build
-        run: nix build ./flake.nix
+        run: nix build
