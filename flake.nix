@@ -16,18 +16,20 @@
         defaultPackage = pkgs.stdenv.mkDerivation {
             pname = "patrick-talks";
             version = "0.1.0";
-            src = ./;
+            src = ./.;
             buildInputs = [
               texlive
             ];
 
             buildPhase = ''
               find . -type f -name '*.tex' | xargs pdflatex
-            ''
+            '';
 
             installPhase = ''
               mkdir -p $out
               mv . $out
             '';
-        }
+        };
       }
+      );
+}
