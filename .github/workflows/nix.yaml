@@ -1,0 +1,17 @@
+name: Build flake
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  flakes-simple:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: nixbuild/nix-quick-install-action@v9
+        with:
+          nix_version: 2.4
+          nix_conf: experimental-features = nix-command flakes
+      - name: nix build
+        run: nix build ./flake.nix
