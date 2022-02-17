@@ -241,5 +241,7 @@ TSWLatexianTemp*
 # generated if using elsarticle.cls
 *.spl
 
+.DS_Store
+
 ## Nix
 /result

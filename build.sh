@@ -11,6 +11,7 @@ SHELL="/bin/sh"
 # For some reason, using $0 instead of `sh` makes Hadolint warn about the single-quotes not expanding expressions
 # shellcheck disable=SC2016
 find "$USER_DIR" -type f -name '*.tex' -exec "$SHELL" -c '
+  cp $(dirname "$@")/* .
   output=$(dirname "$@")/$(basename "$@" .tex).pdf
   echo "$@ - $output"
   HOME=$(pwd) SOURCE_DATE_EPOCH=1622905527 pdflatex "$@" || exit 1
