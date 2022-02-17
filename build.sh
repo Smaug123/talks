@@ -13,6 +13,7 @@ SHELL="/bin/sh"
 find "$USER_DIR" -type f -name '*.tex' -exec "$SHELL" -c '
   cp $(dirname "$@")/* .
   output=$(dirname "$@")/$(basename "$@" .tex).pdf
+  rm -f "$output"
   echo "$@ - $output"
   HOME=$(pwd) SOURCE_DATE_EPOCH=1622905527 pdflatex "$@" || exit 1
   HOME=$(pwd) SOURCE_DATE_EPOCH=1622905527 pdflatex "$@" || exit 1
