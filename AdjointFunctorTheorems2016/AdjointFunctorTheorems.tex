@@ -1,23 +1,30 @@
 \documentclass[11pt]{amsart}
-\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
-\geometry{a4paper}                   % ... or a4paper or a5paper or ... 
+\usepackage{geometry}
+\geometry{a4paper}
 \usepackage{graphicx}
 \usepackage{amssymb}
 \usepackage{epstopdf}
 \usepackage{mdframed}
 \usepackage{hyperref}
-\usepackage{diagrams}
+\usepackage{tikz-cd}
+\usepackage{lmodern}
+
+% Reproducible builds
+\pdfinfoomitdate=1
+\pdftrailerid{}
+\pdfsuppressptexinfo=-1
 
 \newmdtheoremenv{defn}{Definition}
 \newmdtheoremenv{thm}{Theorem}
 
 \title{Motivation for the General Adjoint Functor Theorem}
 \author{Patrick Stevens}
+\date{24th December 2015}
 
 \begin{document}
 
-\maketitle 
-\tiny \begin{center} \url{http://www.patrickstevens.co.uk/misc/AdjointFunctorTheorems/AdjointFunctorTheorems.pdf} \end{center}
+\maketitle
+\tiny \begin{center} \url{https://www.patrickstevens.co.uk/misc/AdjointFunctorTheorems/AdjointFunctorTheorems.pdf} \end{center}
 
 \normalsize
 \emph{You should draw diagrams yourself throughout this document. It will be unreadable as mere symbols.}
@@ -40,30 +47,47 @@ The question is therefore, ``what requirement do we need to add to augment local
 
 Recall the most ``concrete'' definition of a left adjoint to $G: \mathcal{D} \to \mathcal{C}$: it is a specification of $F: \mathcal{C} \to \mathcal{D}$ together with $\eta_A: A \to GFA$ for each $A$, such that any $g: A \to GB$ has a unique $h: FA \to B$ with $(Gh) \circ \eta_A = g$.
 
-\newarrow {Dashto} {}{dash}{}{dash}> 
-
-\begin{diagram}
-FA & \rDashto^h & B \\
-GFA & \rTo^{Gh} & GB \\
-\uTo^{\eta_A} & \ruTo~f & {} \\
-A & {} & {}
-\end{diagram}
+\[
+\begin{tikzcd}
+FA
+    \arrow[r, dashrightarrow, "h"']
+& B
+\\
+GFA
+    \arrow[r, "Gh"]
+& GB
+\\
+A
+    \arrow[u, "\eta_A"]
+    \arrow[ur, "f"']
+&
+\end{tikzcd}
+\]
 
 This definition is how I remember what an adjoint is, and it very closely parallels the UMP of the free group on a given set.
 
-Now, by TAMO\footnote{\url{http://star.psy.ohio-state.edu/coglab/Miracle.html}}, I define the following Tiny Set Condition:
+Now, by Then A Miracle Occurs\footnote{\tiny{\url{https://web.archive.org/web/20070703151645/http://star.psy.ohio-state.edu/coglab/Miracle.html}}}, I define the following Tiny Set Condition:
 
 \
 
 \begin{defn}[Tiny Set Condition] A functor $G: \mathcal{D} \to \mathcal{C}$ has the TSC iff for every object $A \in \mathcal{C}$, there is $B \in \mathcal{D}$ and $\eta_A : A \to GB$ such that every $g: A \to GX$ factors as $A \xrightarrow[\eta_A]{} GB \xrightarrow[Gh]{} GX$ for some $h: B \to X$.
 
-\begin{diagram}
-B & \rTo^h & X \\
-GB & \rTo^{Gh} & GX \\
-\uTo^{\eta_A} & \ruTo~g & {} \\
-A & {} & {}
-\end{diagram}
-
+\[
+\begin{tikzcd}
+B
+    \arrow[r, "h"']
+& X
+\\
+GB
+    \arrow[r, "Gh"]
+& GX
+\\
+A
+    \arrow[u, "\eta_A"]
+    \arrow[ur, "g"']
+&
+\end{tikzcd}
+\]
 \end{defn}
 
 \
@@ -122,61 +146,109 @@ The TSC is ostensibly only a slight weakening of the definition of an adjoint, s
 
 I will write $FA$ for the object $B$ guaranteed by the TSC; this anticipates the definition of $F$ as a functor.
 
-\subsection{Proof} 
+\subsection{Proof}
 Recall the theorem that a specification of a left adjoint is equivalent to a specification of an initial object of $(A \downarrow G)$ for each object $A \in \mathcal{C}$.
 There's one obvious choice for such an initial object: $(FA, \eta_A)$.
 (Note for the future that this might not actually be initial, but it's the obvious choice.)
 Is this actually initial?
 
-\begin{diagram}
-A & {} & {} \\
-\dTo^{\eta_A} & \rdTo^f \\
-GFA & \rDashto & GX \\
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+A
+    \arrow[dr, "f"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GFA
+    \arrow[r, dashrightarrow]
+& GX
+\end{tikzcd}
+\]
 
 Well, it certainly has an arrow from it into any other $(X \in \mathcal{D}, f: A \to GX)$, because that's just the statement of the TSC: any arrow $f: A \to GX$ factors through the map $\eta_A : A \to GFA$.
 
-Is that arrow unique? 
+Is that arrow unique?
 Well, OK, maybe it isn't. The TSC didn't tell us much, after all.
 But we are in a complete and locally small category, so what we can do is equalise out all the ways in which the arrow fails to be unique.
 
 \subsubsection{Try and make the arrow unique}
 Say $\{ G(h_i): i \in I \}$ is the set of distinct arrows $GFA \to GX$ with $G(h_i) \eta_A = f$.
 
-\begin{diagram}
-A & {} & {} \\
-\dTo^{\eta_A} & \rdTo^f & {} \\
-GFA & \pile{\rTo^{G(h_1)} \\ \rTo_{G(h_2)}} & GX \\ 
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+A
+    \arrow[dr, "f"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GFA
+    \arrow[r, shift left, "G(h_1)"]
+    \arrow[r, shift right, "G(h_2)"']
+& GX
+\end{tikzcd}
+\]
 
 Let $E$ be the ``industrial-strength equaliser'' of the $h_i$ in $\mathcal{D}$: an arrow $e: E \to FA$ such that $h_i e = h_j e$ for all $i, j$.
 
 Since $G$ preserves limits, $Ge: GE \to GFA$ must be an industrial-strength equaliser of the $G(h_i)$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & {} & \dTo^{\eta_A} & \rdTo^f & {} \\
-GE & \rTo_{Ge} & GFA & \pile{\rTo^{G(h_1)} \\ \rTo_{G(h_2)}} & GX \\ 
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dr, "f"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GE
+    \arrow[r, "Ge"']
+& GFA
+    \arrow[r, shift left, "G(h_1)"]
+    \arrow[r, shift right, "G(h_2)"']
+& GX
+\end{tikzcd}
+\]
 
 Since $\eta_A$ equalises all the $G(h_i)$, it must lift uniquely over $Ge$: say $\eta_A = G(e) \circ \overline{\eta_A}$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & \ldTo^{\overline{\eta_A}} & \dTo^{\eta_A} & \rdTo^f & {} \\
-GE & \rTo_{Ge} & GFA & \pile{\rTo^{G(h_1)} \\ \rTo_{G(h_2)}} & GX \\ 
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dl, "\overline{\eta_A}"']
+    \arrow[dr, "f"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GE
+    \arrow[r, "Ge"']
+& GFA
+    \arrow[r, shift left, "G(h_1)"]
+    \arrow[r, shift right, "G(h_2)"']
+& GX
+\end{tikzcd}
+\]
 
 Now, in our dream world, the $G(h_i)$ would all be equal: that is, $Ge$ would be an iso.
 Can we find an inverse?
 The TSC tells us that there is an arrow $G(\gamma) : GFA \to GE$ such that $G(\gamma) \eta_A = \overline{\eta_A}$.
 That is, $G(e) G(\gamma) \eta_A = \eta_A$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & \ldTo^{\overline{\eta_A}} & \dTo^{\eta_A} & \rdTo^f & {} \\
-GE & \pile{\rTo^{Ge} \\ \lTo_{G(\gamma)}} & GFA & \pile{\rTo^{G(h_1)} \\ \rTo_{G(h_2)}} & GX \\ 
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dl, "\overline{\eta_A}"']
+    \arrow[dr, "f"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GE
+    \arrow[r, shift left, "Ge"]
+& GFA
+    \arrow[l, shift left, "G(\gamma)"]
+    \arrow[r, shift left, "G(h_1)"]
+    \arrow[r, shift right, "G(h_2)"']
+& GX
+\end{tikzcd}
+\]
 
 This is as far as we can go, because of the weakness of the TSC, telling us nothing about the arrows whose existence it guarantees.
 
@@ -188,44 +260,111 @@ This would produce an object which we really hope would actually have the unique
 
 Let $G(i): GI \to GFA$ be the industrial strength equaliser of all maps $r_i: FA \to FA$ such that $G(r_i) \eta_A = \eta_A$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & {} & \dTo_{\eta_A} & \rdTo^{\eta_A} & {} \\
-GI & \rTo_{G(i)} & GFA & \pile{\rTo^{G(r_1)} \\ \rTo_{G(r_2)}} & GFA\\
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dr, "\eta_A"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GI
+    \arrow[r, "G(i)"']
+& GFA
+    \arrow[r, shift left, "G(r_1)"]
+    \arrow[r, shift right, "G(r_2)"']
+& GFA
+\end{tikzcd}
+\]
 
 Now $G(e \gamma) \eta_A = \eta_A$, so $\eta_A$ lifts over $Gi$ to $\eta_A': A \to GI$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & \ldTo^{\eta_A'} & \dTo_{\eta_A} & \rdTo^{\eta_A} & {} \\
-GI & \rTo_{G(i)} & GFA & \pile{\rTo^{G(r_1)} \\ \rTo_{G(r_2)}} & GFA\\
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dl, "\eta'_A"']
+    \arrow[dr, "\eta_A"]
+    \arrow[d, "\eta_A"]
+&
+\\
+GI
+    \arrow[r, "G(i)"']
+& GFA
+    \arrow[r, shift left, "G(r_1)"]
+    \arrow[r, shift right, "G(r_2)"']
+& GFA
+\end{tikzcd}
+\]
+
 
 Finally, I claim that this is initial. Indeed, it certainly has maps into every $(GX, f)$, because we can just compose $A$'s TSC-map with $G(i)$.
 
-\begin{diagram}
-{} & {} & A & {} & {} & {} & {} \\
-{} & \ldTo^{\eta_A'} & \dTo_{\eta_A} & \rdTo^{\eta_A}\rdTo(4,2)^f & {} & {} & {} \\
-GI & \rTo_{G(i)} & GFA & \pile{\rTo^{G(r_1)} \\ \rTo_{G(r_2)}} & GFA & \rTo_{G(h)} & GX\\
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=huge]
+& A
+    \arrow[dl, "\eta'_A"']
+    \arrow[d, "\eta_A"]
+    \arrow[dr, "\eta_A"']
+    \arrow[drr, "f"]
+&
+&
+\\
+GI
+    \arrow[r, "G(i)"']
+& GFA
+    \arrow[r, shift left, "G(r_1)"]
+    \arrow[r, shift right, "G(r_2)"']
+& GFA
+    \arrow[r, "G(h)"']
+& GX
+\end{tikzcd}
+\]
 
 The map is unique: if we had $G(x), G(y): GI \to GX$ such that $G(x)\eta_A' = G(y) \eta_A' = f$, say, then make their equaliser $G(e)$ as above.
 $\eta_A'$ lifts over $G(e): GE \to GI$, say to $\eta_A'': A \to GE$.
 
-\begin{diagram}
-{} & {} & A & {} & {} \\
-{} & \ldTo^{\eta_A''} & \dTo_{\eta_A'} &\rdTo^{f} & {} \\
-GE & \rTo_{G(e)} & GI & \pile{\rTo^{G(x)} \\ \rTo_{G(y)}} & GX
-\end{diagram}
+\[
+\begin{tikzcd}[row sep=large, column sep=large]
+& A
+    \arrow[dl, "\eta''_A"']
+    \arrow[dr, "f"]
+    \arrow[d, "\eta'_A"]
+&
+\\
+GE
+    \arrow[r, "G(e)"']
+& GI
+    \arrow[r, shift left, "G(x)"]
+    \arrow[r, shift right, "G(y)"']
+& GX
+\end{tikzcd}
+\]
 
-By the TSC, there is a map $G(\gamma) : GFA \to GE$ with $G(\gamma) \eta_A = \eta_A''$, so $G(i) G(e) G(\gamma) \eta_A = \eta_A$.
+By the TSC, there is a map $G(\gamma) : GFA \to GE$ with $G(\gamma) \eta_A = \eta_A''$.
 
-\begin{diagram}
-{} & {} & {} & {} & {} & {} & A & {} & {} \\
-{} & {} & {} & {} & {} & \ldTo(6, 2)^{\eta_A'} \ldTo(4,2)_{\eta_A} \ldTo_{\eta_A''} & \dTo_{\eta_A'} &\rdTo^{f} & {} \\
-GI & \rTo_{G(i)} & GFA & \rTo_{G(\gamma)} & GE & \rTo_{G(e)} & GI & \pile{\rTo^{G(x)} \\ \rTo_{G(y)}} & GX
-\end{diagram}
+So $G(i) G(e) G(\gamma) \eta_A = \eta_A$.
+
+\[
+\begin{tikzcd}[row sep=large, column sep=huge]
+& & & A
+    \arrow[dlll, "\eta'_A"']
+    \arrow[dll, "\eta_A"]
+    \arrow[dl, "\eta''_A"]
+    \arrow[d, "\eta'_A"]
+    \arrow[dr, "f"]
+&
+\\
+GI
+    \arrow[r, "G(i)"']
+& GFA
+    \arrow[r, "G(\gamma)"']
+& GE
+    \arrow[r, "G(e)"']
+& GI
+    \arrow[r, shift left, "G(x)"]
+    \arrow[r, shift right, "G(y)"']
+& GX
+\end{tikzcd}
+\]
 
 Now $G(i)$ is an industrial equaliser of things of this form, so $G(i) G(e) G(\gamma) G(i) = G(i)$; $G(i)$ is monic and so $G(e) G(\gamma) G(i) = 1_{GI}$.
 
