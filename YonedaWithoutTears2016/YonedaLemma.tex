@@ -1,14 +1,17 @@
 \documentclass[11pt]{amsart}
-    \usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
-    \geometry{a4paper}                   % ... or a4paper or a5paper or ...
-    %\geometry{landscape}                % Activate for for rotated page geometry
-    %\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+    \usepackage{geometry}
+    \geometry{a4paper}
     \usepackage{graphicx}
     \usepackage{amssymb}
     \usepackage{epstopdf}
     \usepackage{mdframed}
     \usepackage{hyperref}
-    \usepackage{diagrams}
+
+% Reproducible builds
+\pdfinfoomitdate=1
+\pdftrailerid{}
+\pdfsuppressptexinfo=-1
+
     \DeclareGraphicsRule{.tif}{png}{.png}{`convert #1 `dirname #1`/`basename #1 .tif`.png}
 
     \newmdtheoremenv{note}{Note}
